@@ -23,7 +23,7 @@ It is **not affiliated with or endorsed by** the QDirStat project or its author.
 ### Arch / CachyOS package
 
 Download the latest `.pkg.tar.zst` from the
-[releases page](https://github.com/PipettingBeaver/qdirstat-bubbly/releases/latest),
+[releases page](https://github.com/PipettingBeaver/qdirstat-bubbly/releases/tag/v2.0-bubbly-2),
 then install it:
 
 ```bash
