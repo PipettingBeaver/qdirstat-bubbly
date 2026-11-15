@@ -3,7 +3,7 @@
 ![QDirStat Bubbly treemap](screenshots/QDirStat-bubbly-treemap.png)
 
 **QDirStat Bubbly** is an unofficial fork of [QDirStat 2.0](https://github.com/shundhammer/qdirstat)
-by Stefan Hundhammer, adding a WizTree-style treemap experience.
+by Stefan Hundhammer, adding a WizTree-style treemap experience. In my opinion, the graphics look bubbly.
 
 It is **not affiliated with or endorsed by** the QDirStat project or its author.
 
