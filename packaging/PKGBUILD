@@ -1,0 +1,25 @@
+pkgname=qdirstat-bubbly
+pkgver=2.0
+pkgrel=2
+pkgdesc="QDirStat patched with a WizTree-style treemap (unofficial fork)"
+arch=('x86_64')
+url="https://github.com/shundhammer/qdirstat"
+license=('GPL-2.0-only')
+depends=('qt6-base' 'qt6-5compat' 'glibc' 'gcc-libs' 'zlib' 'hicolor-icon-theme')
+makedepends=('qt6-base' 'qt6-5compat' 'make' 'gcc')
+provides=('qdirstat')
+conflicts=('qdirstat' 'qdirstat-git' 'qdirstat-wiztree')
+replaces=('qdirstat-wiztree')
+source=("qdirstat-bubbly-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$srcdir/qdirstat-bubbly"
+    qmake6
+    make QMAKE=/usr/bin/qmake6
+}
+
+package() {
+    cd "$srcdir/qdirstat-bubbly"
+    make INSTALL_ROOT="$pkgdir" install
+}

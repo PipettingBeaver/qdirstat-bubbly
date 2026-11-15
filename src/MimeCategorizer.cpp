@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: MimeCategorizer.cpp
  *   Summary:	Support classes for QDirStat
@@ -59,7 +61,7 @@ QColor MimeCategorizer::color( FileInfo * item )
 {
     MimeCategory *mimeCategory = category( item );
 
-    return mimeCategory ? mimeCategory->color() : Qt::white;
+    return mimeCategory ? mimeCategory->color() : QColor( 0x70, 0x70, 0x70 );
 }
 
 

@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: MainWindow.cpp
  *   Summary:	QDirStat main window
@@ -418,6 +420,12 @@ void MainWindow::showTreemapView()
 	_ui->treemapView->enable();
     else
 	_ui->treemapView->disable();
+}
+
+
+void MainWindow::reloadTreemap()
+{
+    _ui->treemapView->reloadSettings();
 }
 
 
@@ -848,7 +856,7 @@ void MainWindow::askWriteCache()
 
 void MainWindow::updateWindowTitle( const QString & url )
 {
-    QString windowTitle = "QDirStat";
+    QString windowTitle = "QDirStat Bubbly";
 
     if ( SysUtil::runningAsRoot() )
 	windowTitle += tr( " [root]" );
@@ -1169,6 +1177,9 @@ void MainWindow::openConfigDialog()
     _configDialog = new ConfigDialog( this );
     CHECK_PTR( _configDialog );
     _configDialog->cleanupConfigPage()->setCleanupCollection( app()->cleanupCollection() );
+
+    connect( _configDialog, SIGNAL( applyChanges() ),
+             this,	    SLOT  ( reloadTreemap() ) );
 
     if ( ! _configDialog->isVisible() )
     {

@@ -1,0 +1,17 @@
+QDirStat Bubbly
+
+This is an unofficial modified variant of QDirStat 2.0.
+Original project: https://github.com/shundhammer/qdirstat
+Original author and copyright holder: Stefan Hundhammer and QDirStat contributors.
+License: GNU General Public License version 2 only (GPL-2.0-only). See LICENSE.
+
+Modifications for QDirStat Bubbly were made in 2026 and include:
+- WizTree-style treemap color modes, palettes, and extension coloring.
+- Folder padding, folder outlines, and optional folder labels.
+- Treemap configuration page and WizTree preset.
+- File Type Statistics color swatches.
+- High-DPI cushion rendering.
+
+This variant is not affiliated with or endorsed by the QDirStat project or its
+author. It is distributed without warranty, under the terms of the GPL-2.0-only.
+The complete corresponding source is included in this repository.

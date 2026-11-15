@@ -1,3 +1,5 @@
+# Modified for QDirStat Bubbly on 2026-11-10.
+
 # -*- mode: makefile -*-
 #
 # qmake .pro file for qdirstat/src
@@ -77,6 +79,7 @@ SOURCES	  = main.cpp			\
 	    ExcludeRulesConfigPage.cpp	\
 	    ExistingDirCompleter.cpp	\
             ExistingDirValidator.cpp	\
+	    ExtensionColorMap.cpp	\
 	    FileAgeStats.cpp		\
 	    FileAgeStatsWindow.cpp	\
 	    FileDetailsView.cpp		\
@@ -148,6 +151,7 @@ SOURCES	  = main.cpp			\
 	    Translator.cpp		\
 	    Trash.cpp			\
 	    TreeWalker.cpp		\
+	    TreemapConfigPage.cpp	\
 	    TreemapTile.cpp		\
 	    TreemapView.cpp		\
 	    UnpkgSettings.cpp		\
@@ -189,6 +193,7 @@ HEADERS	  =				\
 	    ExcludeRulesConfigPage.h	\
 	    ExistingDirCompleter.h	\
 	    ExistingDirValidator.h	\
+	    ExtensionColorMap.h		\
 	    FileDetailsView.h		\
 	    FileInfo.h			\
 	    FileInfoIterator.h		\
@@ -248,6 +253,7 @@ HEADERS	  =				\
 	    SystemFileChecker.h		\
 	    Translator.h		\
 	    Trash.h			\
+	    TreemapConfigPage.h		\
 	    TreemapTile.h		\
 	    UnpkgSettings.cpp		\
 	    UnreadableDirsWindow.h	\

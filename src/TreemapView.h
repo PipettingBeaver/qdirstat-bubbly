@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: TreemapView.h
  *   Summary:	View widget for treemap rendering for QDirStat
@@ -31,6 +33,7 @@
 
 
 class QMouseEvent;
+class QPainter;
 class QSettings;
 
 
@@ -63,6 +66,14 @@ namespace QDirStat
 	 * and the selection model with setSelectionModel() after creating this
 	 * widget.
 	 **/
+	enum ColorMode
+	{
+	    MimeCategoryColor = 0,
+	    ExtensionColor,
+	    TopLevelFolderColor,
+	    FileSizeColor
+	};
+
 	TreemapView( QWidget * parent = 0 );
 
 	/**
@@ -136,17 +147,35 @@ namespace QDirStat
 	TreemapTile * findTile( const FileInfo * node );
 
 	/**
-	 * Returns a suitable color for 'file' based on a set of internal rules
-	 * (according to filename extension, MIME type or permissions).
+	 * Returns a suitable color for 'file' based on the current color mode.
 	 **/
-	QColor tileColor( FileInfo * file ) const
-		{ return _useFixedColor ? _fixedColor : MimeCategorizer::instance()->color( file ); }
+	QColor tileColor( FileInfo * file ) const;
+
+	/**
+	 * Return the fill color for directory tiles in the current color mode.
+	 **/
+	QColor dirTileColor( FileInfo * file ) const;
+
+	QColor dirGradientStartFor( FileInfo * file ) const;
+	QColor dirGradientEndFor( FileInfo * file ) const;
+
+	QColor clusterColor( FileInfo * file ) const;
+	QColor sizeColor( FileInfo * file ) const;
+	FileInfo * topLevelCluster( FileInfo * file ) const;
 
 	/**
 	 * Use a fixed color for all tiles. To undo this, set an invalid QColor
 	 * with the QColor default constructor.
 	 **/
 	void setFixedColor( const QColor & fixedColor );
+
+	/**
+	 * Re-read all treemap settings and rebuild the treemap.
+	 **/
+	void reloadSettings();
+
+	static QString colorModeToString( ColorMode mode );
+	static ColorMode colorModeFromString( const QString & name );
 
         /**
          * Return the tile of the deepest-level highlighted parent or 0 if no
@@ -366,6 +395,16 @@ namespace QDirStat
          **/
         bool useDirGradient() const { return _useDirGradient; }
 
+	ColorMode colorBy() const { return _colorBy; }
+	bool folderOutlines() const { return _folderOutlines; }
+	bool folderLabels() const { return _folderLabels; }
+	bool useDevicePixelRatio() const { return _useDevicePixelRatio; }
+	int folderOutlineMinSize() const { return _folderOutlineMinSize; }
+	int folderLabelMinSize() const { return _folderLabelMinSize; }
+	int folderPadding() const { return _folderPadding; }
+	int folderPaddingMaxDepth() const { return _folderPaddingMaxDepth; }
+	const QColor & folderOutlineColor() const { return _folderOutlineColor; }
+
 	/**
 	 * Returns 'true' if cushion shaded treemap tiles are to be separated
 	 * by a grid, 'false' if not.
@@ -505,6 +544,8 @@ namespace QDirStat
 	 **/
 	virtual void resizeEvent( QResizeEvent * event ) Q_DECL_OVERRIDE;
 
+	virtual void drawForeground( QPainter * painter, const QRectF & rect ) Q_DECL_OVERRIDE;
+
 
 	// Data members
 
@@ -539,6 +580,17 @@ namespace QDirStat
         QColor _dirGradientStart;
         QColor _dirGradientEnd;
 	QColor _fixedColor;
+
+	ColorMode _colorBy;
+	bool   _folderOutlines;
+	bool   _folderLabels;
+	bool   _useDevicePixelRatio;
+	int    _folderOutlineMinSize;
+	int    _folderLabelMinSize;
+	int    _folderPadding;
+	int    _folderPaddingMaxDepth;
+	QColor _folderOutlineColor;
+	FileInfo * _currentRoot;
 
 	int    _ambientLight;
 

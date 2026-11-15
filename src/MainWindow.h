@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: MainWindow.h
  *   Summary:	QDirStat main window
@@ -281,6 +283,11 @@ protected slots:
      * the corresponding action.
      **/
     void showTreemapView();
+
+    /**
+     * Re-read the treemap settings and rebuild the treemap.
+     **/
+    void reloadTreemap();
 
     /**
      * Notification that a cleanup action was started.

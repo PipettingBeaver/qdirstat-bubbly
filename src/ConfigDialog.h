@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: ConfigDialog.h
  *   Summary:	QDirStat configuration dialog classes
@@ -20,6 +22,7 @@ namespace QDirStat
     class MimeCategoryConfigPage;
     class ExcludeRulesConfigPage;
     class GeneralConfigPage;
+    class TreemapConfigPage;
 
 
     /**
@@ -57,6 +60,9 @@ namespace QDirStat
 	 **/
 	MimeCategoryConfigPage * mimeCategoryConfigPage() const
 	    { return _mimeCategoryConfigPage; }
+
+	TreemapConfigPage * treemapConfigPage() const
+	    { return _treemapConfigPage; }
 
     public slots:
 
@@ -123,6 +129,7 @@ namespace QDirStat
 	MimeCategoryConfigPage	* _mimeCategoryConfigPage;
 	ExcludeRulesConfigPage  * _excludeRulesConfigPage;
 	GeneralConfigPage	* _generalConfigPage;
+	TreemapConfigPage	* _treemapConfigPage;
 
     };	// class ConfigDialog
 

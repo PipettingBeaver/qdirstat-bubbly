@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: Version.h
  *   Summary:	Version number header for QDirStat
@@ -10,7 +12,7 @@
 #define Version_h
 
 #define QDIRSTAT_VERSION "2.0"          // add ".01-git" after a release
-#define MENUBAR_VERSION  "V2.0  "       // add "+ "      after a release
+#define MENUBAR_VERSION  "V2.0-bubbly "       // add "+ "      after a release
 
 #define RELEASE_VERSION  "2.0"
 #define RELEASE_BASE_URL "https://github.com/shundhammer/qdirstat/releases/tag/"

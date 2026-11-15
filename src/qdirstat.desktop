@@ -1,15 +1,16 @@
+# Modified for QDirStat Bubbly on 2026-11-10.
 [Desktop Entry]
 Type=Application
-Name=QDirStat
+Name=QDirStat Bubbly
 Exec=qdirstat %f
 # Uncomment one of the lines below instead to change HiDPI scaling:
 # Exec=sh -c "QT_SCALE_FACTOR=2 qdirstat %f"
 # Exec=sh -c "QT_ENABLE_HIGHDPI_SCALING=0 qdirstat %f"
 
 Icon=qdirstat
-GenericName=QDirStat Directory Statistics
-Comment=QDirStat Directory Statistics
+GenericName=QDirStat Bubbly Directory Statistics
+Comment=QDirStat Bubbly - WizTree-style treemap variant
 Terminal=false
 MimeType=inode/directory;inode/mount-point;
 Categories=Qt;System;Filesystem;
-Keywords=directory;tree;size;statistic;disk;space;
+Keywords=directory;tree;size;statistic;disk;space;wiztree;treemap;bubbly;

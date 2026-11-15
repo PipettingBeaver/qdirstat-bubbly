@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: FileTypeStatsWindow.cpp
  *   Summary:	QDirStat file type statistics window
@@ -9,13 +11,18 @@
 
 #include <algorithm>    // std::sort()
 
+#include <QIcon>
 #include <QMenu>
+#include <QPainter>
+#include <QPixmap>
 
 #include "FileTypeStatsWindow.h"
 #include "FileTypeStats.h"
 #include "FileSizeStatsWindow.h"
 #include "LocateFileTypeWindow.h"
+#include "ExtensionColorMap.h"
 #include "MimeCategory.h"
+#include "Settings.h"
 #include "SettingsHelpers.h"
 #include "HeaderTweaker.h"
 #include "QDirStatApp.h"
@@ -28,6 +35,51 @@
 #define TOP_X	20
 
 using namespace QDirStat;
+
+
+static QIcon colorSwatchIcon( const QColor & color )
+{
+    if ( ! color.isValid() )
+        return QIcon();
+
+    QPixmap pixmap( 12, 12 );
+    pixmap.fill( color );
+
+    QPainter painter( &pixmap );
+    painter.setPen( QColor( 0, 0, 0, 140 ) );
+    painter.drawRect( 0, 0, 11, 11 );
+    painter.end();
+
+    return QIcon( pixmap );
+}
+
+
+static bool useExtensionColors()
+{
+    Settings settings;
+    settings.beginGroup( "Treemaps" );
+    bool result = settings.value( "ColorBy", "Extension" ).toString() == "Extension";
+    settings.endGroup();
+
+    return result;
+}
+
+
+static QColor suffixColor( const QString & suffix,
+                           MimeCategory * category,
+                           bool           extensionColors )
+{
+    if ( suffix == NO_SUFFIX )
+        return QColor( 0x70, 0x70, 0x70 );
+
+    if ( suffix == NON_SUFFIX_RULE )
+        return category ? category->color() : QColor( 0x70, 0x70, 0x70 );
+
+    if ( extensionColors )
+        return ExtensionColorMap::instance()->colorForSuffix( suffix );
+
+    return category ? category->color() : QColor( 0x70, 0x70, 0x70 );
+}
 
 
 QPointer<LocateFileTypeWindow> FileTypeStatsWindow::_locateFileTypeWindow = 0;
@@ -89,6 +141,7 @@ void FileTypeStatsWindow::initWidgets()
     _ui->heading->setFont( font );
 
     _ui->treeWidget->setColumnCount( FT_ColumnCount );
+    _ui->treeWidget->setIconSize( QSize( 12, 12 ) );
     _ui->treeWidget->setHeaderLabels( QStringList()
 				      << tr( "Name" )
 				      << tr( "Number" )
@@ -144,6 +197,8 @@ void FileTypeStatsWindow::populate( FileInfo * newSubtree )
 
     _ui->heading->setText( tr( "File Type Statistics for %1" )
                            .arg( _subtree.url() ) );
+
+    bool extensionColors = useExtensionColors();
 
     // Don't sort until all items are added
     _ui->treeWidget->setSortingEnabled( false );
@@ -211,6 +266,8 @@ void FileTypeStatsWindow::populate( FileInfo * newSubtree )
 
 	SuffixFileTypeItem * item = addSuffixFileTypeItem( suffix, count, sum );
 	MimeCategory * parentCategory = _stats->category( suffix );
+	item->setIcon( FT_NameCol,
+                       colorSwatchIcon( suffixColor( suffix, parentCategory, extensionColors ) ) );
 
 	if ( parentCategory )
 	{
@@ -268,6 +325,9 @@ FileTypeStatsWindow::addCategoryItem( MimeCategory * category, int count, FileSi
     _ui->treeWidget->addTopLevelItem( item );
     item->setBold();
 
+    if ( category )
+        item->setIcon( FT_NameCol, colorSwatchIcon( category->color() ) );
+
     return item;
 }
 
@@ -280,6 +340,7 @@ FileTypeStatsWindow::addNonSuffixRuleItem( MimeCategory * category )
     int	     count	= _stats->categoryNonSuffixRuleCount( category );
 
     SuffixFileTypeItem * item = addSuffixFileTypeItem( suffix, count, sum );
+    item->setIcon( FT_NameCol, colorSwatchIcon( suffixColor( suffix, category, false ) ) );
 
     return item;
 }

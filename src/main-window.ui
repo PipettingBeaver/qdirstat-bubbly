@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Modified for QDirStat Bubbly on 2026-11-10. -->
 <ui version="4.0">
  <author>Stefan Hundhammer</author>
  <class>MainWindow</class>
@@ -12,7 +13,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>QDirStat</string>
+   <string>QDirStat Bubbly</string>
   </property>
   <property name="windowIcon">
    <iconset resource="icons.qrc">

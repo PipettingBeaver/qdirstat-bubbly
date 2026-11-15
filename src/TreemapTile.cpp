@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: TreemapTile.cpp
  *   Summary:	Treemap rendering for QDirStat
@@ -29,6 +31,26 @@
 
 
 using namespace QDirStat;
+
+static QRectF paddedChildRect( TreemapView * view,
+                               FileInfo * item,
+                               const QRectF & rect,
+                               int parentLevel )
+{
+    if ( ! item || ! item->isDir() )
+        return rect;
+
+    if ( parentLevel >= view->folderPaddingMaxDepth() )
+        return rect;
+
+    int padding = view->folderPadding();
+
+    if ( padding <= 0 || rect.width() <= 2 * padding + 1 || rect.height() <= 2 * padding + 1 )
+        return rect;
+
+    return rect.adjusted( padding, padding, -padding, -padding );
+}
+
 
 
 TreemapTile::TreemapTile( TreemapView *	 parentView,
@@ -92,6 +114,9 @@ void TreemapTile::init()
 
     setZValue( _parentTile ? ( _parentTile->zValue() + 1.0 ) : 0.0 );
 
+    _treeLevel = _parentTile ? _parentTile->_treeLevel + 1 : 0;
+    _color = _parentView->tileColor( _orig );
+
     setBrush( QColor( 0x60, 0x60, 0x60 ) );
     setPen( Qt::NoPen );
 
@@ -106,8 +131,8 @@ void TreemapTile::init()
             else
             {
                 QLinearGradient gradient( rect().topLeft(), rect().bottomRight() );
-                gradient.setColorAt( 0.0, _parentView->dirGradientStart() );
-                gradient.setColorAt( 1.0, _parentView->dirGradientEnd()   );
+                gradient.setColorAt( 0.0, _parentView->dirGradientStartFor( _orig ) );
+                gradient.setColorAt( 1.0, _parentView->dirGradientEndFor( _orig )   );
                 setBrush( gradient );
             }
         }
@@ -174,10 +199,11 @@ void TreemapTile::createChildrenSimple( const QRectF & rect,
 	    else
 		childRect = QRectF( rect.x(), rect.y() + offset, rect.width(), childSize );
 
-	    TreemapTile * tile = new TreemapTile( _parentView, this, *it, childRect, childDir );
+	    QRectF tileRect = paddedChildRect( _parentView, *it, childRect, _treeLevel );
+	    TreemapTile * tile = new TreemapTile( _parentView, this, *it, tileRect, childDir );
 	    CHECK_NEW( tile );
 
-	    tile->cushionSurface().addRidge( dir, childRect );
+	    tile->cushionSurface().addRidge( dir, tileRect );
 
 	    offset += childSize;
 	}
@@ -354,10 +380,11 @@ QRectF TreemapTile::layoutRow( const QRectF & rect,
 	    else
 		childRect = QRectF( rect.x(), rect.y() + round( offset ), secondary, ceil( childSize ) );
 
-	    TreemapTile * tile = new TreemapTile( _parentView, this, *it, childRect, rowCushionSurface );
+	    QRectF tileRect = paddedChildRect( _parentView, *it, childRect, _treeLevel );
+	    TreemapTile * tile = new TreemapTile( _parentView, this, *it, tileRect, rowCushionSurface );
 	    CHECK_NEW( tile );
 
-	    tile->cushionSurface().addRidge( dir, childRect );
+	    tile->cushionSurface().addRidge( dir, tileRect );
 	    offset += childSize;
 	}
 
@@ -444,11 +471,11 @@ void TreemapTile::paint( QPainter			* painter,
 	if ( _orig->isDir() || _orig->isDotEntry() )
 	{
             if ( ! _parentView->useDirGradient() )
-                setBrush( _parentView->dirFillColor() );
+                setBrush( _parentView->dirTileColor( _orig ) );
 	}
 	else
 	{
-	    setBrush( _parentView->tileColor( _orig ) );
+	    setBrush( _color );
 	}
 
 	QGraphicsRectItem::paint( painter, option, widget );
@@ -484,9 +511,17 @@ QPixmap TreemapTile::renderCushion()
     const double lightY      = is * parentView()->lightY();
     const double lightZ      = is * parentView()->lightZ();
 
-    QColor       color       = parentView()->tileColor( _orig );
-    const int    pixelHeight = rect.height();
-    const int    pixelWidth  = rect.width();
+    QColor       color       = _color;
+    qreal        dpr         = 1.0;
+
+    if ( _parentView->useDevicePixelRatio() )
+        dpr = _parentView->devicePixelRatioF();
+
+    if ( dpr < 1.0 )
+        dpr = 1.0;
+
+    const int pixelHeight = (int) ceil( rect.height() * dpr );
+    const int pixelWidth  = (int) ceil( rect.width()  * dpr );
 
     QImage image( pixelWidth, pixelHeight, QImage::Format_RGB32 );
 
@@ -495,14 +530,13 @@ QPixmap TreemapTile::renderCushion()
     const double yy1  = cushionSurface().yy1();
     const double yy22 = cushionSurface().yy2() * 2;
 
-    for ( double y = 0, y0 = rect.y() + 0.5;
-          y < pixelHeight;
-          y++, y0++ )
+    for ( int y = 0; y < pixelHeight; ++y )
     {
-        for ( double x = 0, x0 = rect.x() + 0.5;
-              x < pixelWidth;
-              x++, x0++ )
+        const double y0 = rect.y() + ( y + 0.5 ) / dpr;
+
+        for ( int x = 0; x < pixelWidth; ++x )
         {
+            const double x0 = rect.x() + ( x + 0.5 ) / dpr;
             const double nx = xx22 * x0 + xx1;
             const double ny = yy22 * y0 + yy1;
             double cosa  = ( lightZ - ny*lightY - nx*lightX ) / sqrt( nx*nx + ny*ny + 1.0 );
@@ -523,7 +557,10 @@ QPixmap TreemapTile::renderCushion()
     if ( _parentView->enforceContrast() )
 	enforceContrast( image );
 
-    return QPixmap::fromImage( image );
+    QPixmap pixmap = QPixmap::fromImage( image );
+    pixmap.setDevicePixelRatio( dpr );
+
+    return pixmap;
 }
 
 

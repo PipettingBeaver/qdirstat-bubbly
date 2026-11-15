@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: TreemapTile.h
  *   Summary:	Treemap rendering for QDirStat
@@ -11,6 +13,7 @@
 #define TreemapTile_h
 
 
+#include <QColor>
 #include <QGraphicsRectItem>
 #include <QRectF>
 
@@ -192,6 +195,9 @@ namespace QDirStat
 	 **/
 	CushionSurface & cushionSurface() { return _cushionSurface; }
 
+	int treeLevel() const { return _treeLevel; }
+	const QColor & tileColor() const { return _color; }
+
 
     protected:
 
@@ -372,6 +378,8 @@ namespace QDirStat
 	CushionSurface	_cushionSurface;
 	QPixmap		_cushion;
 	HighlightRect * _highlighter;
+	QColor		_color;
+	int		_treeLevel;
 
     }; // class TreemapTile
 

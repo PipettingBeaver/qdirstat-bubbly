@@ -1,2 +1,9 @@
 Makefile
 .qmake.stash
+.opencode/
+dist/
+packaging/*.tar.gz
+packaging/*.pkg.tar.zst
+packaging/makepkg.log
+packaging/src/
+packaging/pkg/

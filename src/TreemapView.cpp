@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: TreemapView.cpp
  *   Summary:	View widget for treemap rendering for QDirStat
@@ -8,12 +10,17 @@
 
 
 #include <QElapsedTimer>
+#include <QFontMetricsF>
+#include <QPainter>
 #include <QResizeEvent>
 #include <QTimer>
+#include <algorithm>
+#include <cmath>
 
 #include "TreemapView.h"
 #include "DirTree.h"
 #include "DirInfo.h"
+#include "ExtensionColorMap.h"
 #include "FormatUtil.h"
 #include "SelectionModel.h"
 #include "Settings.h"
@@ -52,7 +59,17 @@ TreemapView::TreemapView( QWidget * parent ):
     _newRoot(0),
     _highlightedTile(0),
     _useFixedColor(false),
-    _useDirGradient(true)
+    _useDirGradient(true),
+    _colorBy( ExtensionColor ),
+    _folderOutlines( true ),
+    _folderLabels( true ),
+    _useDevicePixelRatio( true ),
+    _folderOutlineMinSize( 2 ),
+    _folderLabelMinSize( 80 ),
+    _folderPadding( 1 ),
+    _folderPaddingMaxDepth( 2 ),
+    _folderOutlineColor( 0x10, 0x10, 0x10 ),
+    _currentRoot( 0 )
 {
     // logDebug() << endl;
 
@@ -95,6 +112,7 @@ void TreemapView::clear()
     _rootTile	     = 0;
     _newRoot         = 0;
     _sceneMask       = 0;
+    _currentRoot     = 0;
     _parentHighlightList.clear();
 }
 
@@ -177,6 +195,14 @@ void TreemapView::readSettings()
     _forceCushionGrid	= settings.value( "ForceCushionGrid" , false ).toBool();
     _useDirGradient	= settings.value( "UseDirGradient"   , true  ).toBool();
     _minTileSize	= settings.value( "MinTileSize"	     , DefaultMinTileSize ).toInt();
+    _colorBy		= colorModeFromString( settings.value( "ColorBy", "Extension" ).toString() );
+    _folderOutlines	= settings.value( "FolderOutlines"	, true  ).toBool();
+    _folderLabels	= settings.value( "TreemapLabels"	, true  ).toBool();
+    _useDevicePixelRatio = settings.value( "UseDevicePixelRatio", true  ).toBool();
+    _folderOutlineMinSize = settings.value( "FolderOutlineMinSize", 2 ).toInt();
+    _folderLabelMinSize	= settings.value( "TreemapLabelMinSize", 80 ).toInt();
+    _folderPadding	= settings.value( "FolderPadding", 1 ).toInt();
+    _folderPaddingMaxDepth = settings.value( "FolderPaddingMaxDepth", 2 ).toInt();
 
     _currentItemColor	= readColorEntry( settings, "CurrentItemColor"	, Qt::red		     );
     _selectedItemsColor = readColorEntry( settings, "SelectedItemsColor", Qt::yellow		     );
@@ -184,10 +210,12 @@ void TreemapView::readSettings()
     _outlineColor	= readColorEntry( settings, "OutlineColor"	, Qt::black		     );
     _fileFillColor	= readColorEntry( settings, "FileFillColor"	, QColor( 0xde, 0x8d, 0x53 ) );
     _dirFillColor	= readColorEntry( settings, "DirFillColor"	, QColor( 0x10, 0x7d, 0xb4 ) );
-    _dirGradientStart	= readColorEntry( settings, "DirGradientStart"	, QColor( 0x60, 0x60, 0x70 ) );
-    _dirGradientEnd	= readColorEntry( settings, "DirGradientEnd"	, QColor( 0x70, 0x70, 0x80 ) );
+    _dirGradientStart	= readColorEntry( settings, "DirGradientStart"	, QColor( 0x20, 0x20, 0x28 ) );
+    _dirGradientEnd	= readColorEntry( settings, "DirGradientEnd"	, QColor( 0x30, 0x30, 0x3c ) );
+    _folderOutlineColor = readColorEntry( settings, "FolderOutlineColor", QColor( 0x10, 0x10, 0x10 ) );
 
     settings.endGroup();
+    ExtensionColorMap::instance()->readSettings();
 }
 
 
@@ -205,6 +233,14 @@ void TreemapView::writeSettings()
     settings.setValue( "ForceCushionGrid"  , _forceCushionGrid	 );
     settings.setValue( "UseDirGradient"	   , _useDirGradient	 );
     settings.setValue( "MinTileSize"	   , _minTileSize	 );
+    settings.setValue( "ColorBy"	   , colorModeToString( _colorBy ) );
+    settings.setValue( "FolderOutlines"	   , _folderOutlines	 );
+    settings.setValue( "TreemapLabels"	   , _folderLabels	 );
+    settings.setValue( "UseDevicePixelRatio", _useDevicePixelRatio );
+    settings.setValue( "FolderOutlineMinSize", _folderOutlineMinSize );
+    settings.setValue( "TreemapLabelMinSize" , _folderLabelMinSize );
+    settings.setValue( "FolderPadding"      , _folderPadding );
+    settings.setValue( "FolderPaddingMaxDepth", _folderPaddingMaxDepth );
 
     writeColorEntry( settings, "CurrentItemColor"  , _currentItemColor	 );
     writeColorEntry( settings, "SelectedItemsColor", _selectedItemsColor );
@@ -214,6 +250,7 @@ void TreemapView::writeSettings()
     writeColorEntry( settings, "DirFillColor"	   , _dirFillColor	 );
     writeColorEntry( settings, "DirGradientStart"  , _dirGradientStart	 );
     writeColorEntry( settings, "DirGradientEnd"	   , _dirGradientEnd	 );
+    writeColorEntry( settings, "FolderOutlineColor", _folderOutlineColor );
 
     settings.endGroup();
 }
@@ -332,6 +369,7 @@ void TreemapView::rebuildTreemap( FileInfo *	 newRoot,
 
     // Delete all old stuff.
     clear();
+    _currentRoot = newRoot;
 
     if ( ! scene() )
     {
@@ -664,6 +702,355 @@ void TreemapView::setFixedColor( const QColor & color )
 {
     _fixedColor	   = color;
     _useFixedColor = _fixedColor.isValid();
+}
+
+
+QString TreemapView::colorModeToString( ColorMode mode )
+{
+    switch ( mode )
+    {
+        case MimeCategoryColor:   return "MimeCategory";
+        case TopLevelFolderColor: return "TopLevelFolder";
+        case FileSizeColor:       return "FileSize";
+        default:                  return "Extension";
+    }
+}
+
+
+TreemapView::ColorMode TreemapView::colorModeFromString( const QString & name )
+{
+    if ( name == "MimeCategory" )
+        return MimeCategoryColor;
+
+    if ( name == "TopLevelFolder" )
+        return TopLevelFolderColor;
+
+    if ( name == "FileSize" )
+        return FileSizeColor;
+
+    return ExtensionColor;
+}
+
+
+static QColor blendColors( const QColor & from, const QColor & to, double t )
+{
+    t = qBound( 0.0, t, 1.0 );
+
+    return QColor( qRound( from.red()   * ( 1.0 - t ) + to.red()   * t ),
+                   qRound( from.green() * ( 1.0 - t ) + to.green() * t ),
+                   qRound( from.blue()  * ( 1.0 - t ) + to.blue()  * t ) );
+}
+
+
+QColor TreemapView::tileColor( FileInfo * file ) const
+{
+    if ( _useFixedColor )
+        return _fixedColor;
+
+    if ( ! file )
+        return QColor( 0x70, 0x70, 0x70 );
+
+    switch ( _colorBy )
+    {
+        case ExtensionColor:      return ExtensionColorMap::instance()->colorForFile( file );
+        case TopLevelFolderColor: return clusterColor( file );
+        case FileSizeColor:       return sizeColor( file );
+        case MimeCategoryColor:
+        default:                  return MimeCategorizer::instance()->color( file );
+    }
+}
+
+
+QColor TreemapView::dirTileColor( FileInfo * file ) const
+{
+    if ( _colorBy == TopLevelFolderColor && file )
+        return clusterColor( file ).darker( 150 );
+
+    return _dirFillColor;
+}
+
+
+QColor TreemapView::dirGradientStartFor( FileInfo * file ) const
+{
+    if ( _colorBy == TopLevelFolderColor && file )
+        return clusterColor( file ).darker( 220 );
+
+    return _dirGradientStart;
+}
+
+
+QColor TreemapView::dirGradientEndFor( FileInfo * file ) const
+{
+    if ( _colorBy == TopLevelFolderColor && file )
+        return clusterColor( file ).darker( 170 );
+
+    return _dirGradientEnd;
+}
+
+
+FileInfo * TreemapView::topLevelCluster( FileInfo * file ) const
+{
+    if ( ! file )
+        return 0;
+
+    FileInfo * base = _currentRoot;
+
+    if ( ! base )
+        base = _rootTile ? _rootTile->orig() : 0;
+
+    if ( ! base )
+        return file;
+
+    FileInfo * cluster = file;
+
+    while ( cluster->parent() && cluster->parent() != base )
+    {
+        if ( ! cluster->parent()->parent() )
+            break;
+
+        cluster = cluster->parent();
+    }
+
+    return cluster;
+}
+
+
+QColor TreemapView::clusterColor( FileInfo * file ) const
+{
+    FileInfo * cluster = topLevelCluster( file );
+
+    if ( ! cluster )
+        return QColor( 0x70, 0x70, 0x70 );
+
+    return ExtensionColorMap::instance()->colorForKey( "cluster:" + cluster->name() );
+}
+
+
+QColor TreemapView::sizeColor( FileInfo * file ) const
+{
+    if ( ! file || ! _currentRoot )
+        return QColor( 0x60, 0x60, 0x60 );
+
+    FileSize maxSize = _currentRoot->totalAllocatedSize();
+
+    if ( maxSize <= 0 )
+        return QColor( 0x60, 0x60, 0x60 );
+
+    double t = std::log( (double) file->totalAllocatedSize() + 1.0 ) /
+               std::log( (double) maxSize + 1.0 );
+
+    t = qBound( 0.0, t, 1.0 );
+
+    QColor small( 0x2b, 0x6c, 0xb0 );
+    QColor mid  ( 0xf6, 0xc3, 0x43 );
+    QColor large( 0xd7, 0x26, 0x2d );
+
+    if ( t < 0.5 )
+        return blendColors( small, mid, t * 2.0 );
+
+    return blendColors( mid, large, ( t - 0.5 ) * 2.0 );
+}
+
+
+void TreemapView::reloadSettings()
+{
+    readSettings();
+
+    if ( _tree && _tree->firstToplevel() )
+        rebuildTreemap();
+    else
+        viewport()->update();
+}
+
+
+void TreemapView::drawForeground( QPainter * painter, const QRectF & rect )
+{
+    QGraphicsView::drawForeground( painter, rect );
+
+    if ( ! _rootTile || ! scene() || ( ! _folderOutlines && ! _folderLabels ) )
+        return;
+
+    QList<TreemapTile *> dirTiles;
+    QList<TreemapTile *> labelTiles;
+    QList<QGraphicsItem *> items = scene()->items( rect,
+                                                   Qt::IntersectsItemShape,
+                                                   Qt::DescendingOrder );
+
+    foreach ( QGraphicsItem * item, items )
+    {
+        TreemapTile * tile = dynamic_cast<TreemapTile *>( item );
+
+        if ( ! tile )
+            continue;
+
+        FileInfo * orig = tile->orig();
+
+        if ( ! orig )
+            continue;
+
+        QRectF tileRect = tile->rect();
+
+        if ( orig->isDir() || orig->isDotEntry() )
+        {
+            if ( tileRect.width()  >= _folderOutlineMinSize &&
+                 tileRect.height() >= _folderOutlineMinSize )
+                dirTiles << tile;
+        }
+
+        if ( orig->isDir() || orig->isFile() || orig->isDotEntry() )
+            labelTiles << tile;
+    }
+
+    painter->save();
+    painter->setRenderHint( QPainter::Antialiasing, false );
+
+    if ( _folderOutlines )
+    {
+        foreach ( TreemapTile * tile, dirTiles )
+        {
+            QColor color = _folderOutlineColor;
+            int alpha = qBound( 60, 230 - tile->treeLevel() * 18, 230 );
+            color.setAlpha( alpha );
+
+            QPen pen( color );
+            pen.setCosmetic( true );
+            pen.setWidthF( tile->treeLevel() <= 1 ? 2.0 : 1.0 );
+
+            painter->setPen( pen );
+            painter->setBrush( Qt::NoBrush );
+            painter->drawRect( tile->rect() );
+        }
+    }
+
+    if ( _folderLabels )
+    {
+        std::sort( labelTiles.begin(), labelTiles.end(),
+                   []( TreemapTile * a, TreemapTile * b )
+                   {
+                       bool aCluster = a->orig()->isDir() || a->orig()->isDotEntry();
+                       bool bCluster = b->orig()->isDir() || b->orig()->isDotEntry();
+
+                       if ( aCluster != bCluster )
+                           return aCluster;
+
+                       double areaA = a->rect().width() * a->rect().height();
+                       double areaB = b->rect().width() * b->rect().height();
+
+                       if ( areaA != areaB )
+                           return areaA > areaB;
+
+                       return a->treeLevel() < b->treeLevel();
+                   } );
+
+        QList<QRectF> usedLabelRects;
+
+        foreach ( TreemapTile * tile, labelTiles )
+        {
+            FileInfo * orig = tile->orig();
+
+            if ( ! orig || tile->treeLevel() == 0 )
+                continue;
+
+            QRectF tileRect = tile->rect();
+
+            if ( tileRect.width()  < _folderLabelMinSize ||
+                 tileRect.height() < _folderLabelMinSize )
+                continue;
+
+            bool isDotEntry = orig->isDotEntry();
+            QString text = isDotEntry && orig->parent() ?
+                orig->parent()->name() : orig->name();
+
+            if ( text.isEmpty() || text == "/" || text == "." || text == ".." )
+                continue;
+
+            bool isDir = orig->isDir() || isDotEntry;
+            QFont font = painter->font();
+            int pixelSize = qBound( 7,
+                                    (int) qMin( tileRect.width() / 16.0,
+                                                tileRect.height() / 7.0 ),
+                                    10 );
+            font.setPixelSize( pixelSize );
+            font.setBold( isDir && tile->treeLevel() <= 2 );
+
+            QFontMetricsF metrics( font );
+            QString elided = metrics.elidedText( text, Qt::ElideMiddle, tileRect.width() - 8 );
+
+            if ( elided.isEmpty() )
+                continue;
+
+            double labelWidth = qMin( metrics.horizontalAdvance( elided ) + 4,
+                                      tileRect.width() - 8 );
+            double labelHeight = metrics.height() + 2;
+
+            if ( labelWidth < 8 || labelHeight > tileRect.height() - 6 )
+                continue;
+
+            QList<QPointF> positions;
+            positions << QPointF( tileRect.x() + 4, tileRect.y() + 3 )
+                      << QPointF( tileRect.right() - labelWidth - 4, tileRect.y() + 3 )
+                      << QPointF( tileRect.x() + 4, tileRect.bottom() - labelHeight - 3 )
+                      << QPointF( tileRect.right() - labelWidth - 4, tileRect.bottom() - labelHeight - 3 );
+
+            QRectF labelRect;
+            bool foundPosition = false;
+
+            foreach ( const QPointF & pos, positions )
+            {
+                QRectF candidate( pos.x(), pos.y(), labelWidth, labelHeight );
+
+                if ( candidate.x() < tileRect.x() + 2 ||
+                     candidate.y() < tileRect.y() + 2 ||
+                     candidate.right() > tileRect.right() - 2 ||
+                     candidate.bottom() > tileRect.bottom() - 2 )
+                    continue;
+
+                QRectF paddedCandidate = candidate.adjusted( -2, -1, 2, 1 );
+                bool overlaps = false;
+
+                foreach ( const QRectF & usedRect, usedLabelRects )
+                {
+                    if ( usedRect.intersects( paddedCandidate ) )
+                    {
+                        overlaps = true;
+                        break;
+                    }
+                }
+
+                if ( ! overlaps )
+                {
+                    labelRect = candidate;
+                    foundPosition = true;
+                    break;
+                }
+            }
+
+            if ( ! foundPosition )
+                continue;
+
+            usedLabelRects << labelRect.adjusted( -2, -1, 2, 1 );
+
+            QColor fill = isDir ? dirGradientStartFor( orig ) : tile->tileColor();
+            bool lightFill = fill.lightness() > 128;
+            QColor textColor = lightFill ? QColor( 0, 0, 0 ) : QColor( 255, 255, 255 );
+            QColor haloColor = lightFill ? QColor( 255, 255, 255, 180 ) : QColor( 0, 0, 0, 180 );
+
+            painter->save();
+            painter->setClipRect( tileRect.adjusted( 1, 1, -1, -1 ) );
+            painter->setFont( font );
+
+            painter->setPen( haloColor );
+            painter->drawText( labelRect.translated( 1, 1 ),
+                               Qt::AlignLeft | Qt::AlignVCenter,
+                               elided );
+
+            painter->setPen( textColor );
+            painter->drawText( labelRect, Qt::AlignLeft | Qt::AlignVCenter, elided );
+            painter->restore();
+        }
+    }
+
+    painter->restore();
 }
 
 

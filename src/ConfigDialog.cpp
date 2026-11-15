@@ -1,3 +1,5 @@
+/* Modified for QDirStat Bubbly on 2026-11-10. */
+
 /*
  *   File name: ConfigDialog.cpp
  *   Summary:	QDirStat configuration dialog classes
@@ -12,6 +14,7 @@
 #include "MimeCategoryConfigPage.h"
 #include "ExcludeRulesConfigPage.h"
 #include "GeneralConfigPage.h"
+#include "TreemapConfigPage.h"
 #include "Logger.h"
 #include "Exception.h"
 
@@ -53,6 +56,10 @@ ConfigDialog::ConfigDialog( QWidget * parent ):
     CHECK_NEW( _generalConfigPage );
     _ui->pagesTabWidget->addTab( _generalConfigPage, tr( "General" ) );
 
+    _treemapConfigPage = new TreemapConfigPage( this );
+    CHECK_NEW( _treemapConfigPage );
+    _ui->pagesTabWidget->addTab( _treemapConfigPage, tr( "Treemap" ) );
+
     connect( _ui->applyButton,	 SIGNAL( clicked() ),
 	     this,		 SLOT  ( apply()   ) );
 
@@ -60,6 +67,7 @@ ConfigDialog::ConfigDialog( QWidget * parent ):
     CONNECT_CONFIG_PAGE( _mimeCategoryConfigPage );
     CONNECT_CONFIG_PAGE( _excludeRulesConfigPage );
     CONNECT_CONFIG_PAGE( _generalConfigPage      );
+    CONNECT_CONFIG_PAGE( _treemapConfigPage      );
 }
 
 
